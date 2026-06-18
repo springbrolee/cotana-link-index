@@ -2,7 +2,8 @@ const SUPABASE_URL = "https://vzttlkatauvijjeqdldk.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZ6dHRsa2F0YXV2aWpqZXFkbGRrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE3NjA1MzEsImV4cCI6MjA5NzMzNjUzMX0.6ycVzDnpRREPi8Zg_J4IeGE0Exo-F2W0GV4N97wINxY";
 
 const seedLinks = Array.isArray(window.LINK_INDEX_DATA) ? window.LINK_INDEX_DATA : [];
-const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+const supabaseClient = window.supabase;
+const supabase = supabaseClient?.createClient(SUPABASE_URL, SUPABASE_ANON_KEY) || null;
 
 let links = [];
 let activeDetailId = "";
@@ -13,6 +14,8 @@ const authForm = document.querySelector("#authForm");
 const authMessage = document.querySelector("#authMessage");
 const emailInput = document.querySelector("#emailInput");
 const passwordInput = document.querySelector("#passwordInput");
+const signInButton = document.querySelector("#signInButton");
+const signUpButton = document.querySelector("#signUpButton");
 const signOutButton = document.querySelector("#signOutButton");
 const workspace = document.querySelector("#workspace");
 const cards = document.querySelector("#cards");
@@ -42,11 +45,23 @@ function setMessage(message, kind = "") {
 }
 
 async function initialize() {
-  const { data } = await supabase.auth.getSession();
-  await applySession(data.session);
-  supabase.auth.onAuthStateChange((_event, session) => {
-    applySession(session);
-  });
+  if (!supabase) {
+    setMessage("Supabase SDK failed to load. Refresh the page and try again.", "error");
+    signInButton.disabled = true;
+    signUpButton.disabled = true;
+    return;
+  }
+
+  try {
+    const { data, error } = await supabase.auth.getSession();
+    if (error) throw error;
+    await applySession(data.session);
+    supabase.auth.onAuthStateChange((_event, session) => {
+      applySession(session);
+    });
+  } catch (error) {
+    setMessage(`Supabase initialization failed: ${error.message}`, "error");
+  }
 }
 
 async function applySession(session) {
@@ -511,27 +526,50 @@ function formatInline(value) {
     .replace(/`([^`]+)`/g, "<code>$1</code>");
 }
 
-async function handleAuth(event) {
-  event.preventDefault();
-  const submitter = event.submitter;
-  const mode = submitter?.dataset.authMode || "signin";
+function validateAuthFields() {
   const email = emailInput.value.trim();
   const password = passwordInput.value;
-  setMessage(mode === "signup" ? "Creating account..." : "Signing in...");
+  if (!email || !password) {
+    setMessage("Enter both email and password.", "error");
+    return null;
+  }
+  return { email, password };
+}
 
-  const { error } = mode === "signup"
-    ? await supabase.auth.signUp({ email, password })
-    : await supabase.auth.signInWithPassword({ email, password });
-
-  if (error) {
-    setMessage(error.message, "error");
+async function handleAuth(mode) {
+  if (!supabase) {
+    setMessage("Supabase is not ready. Refresh the page and try again.", "error");
     return;
   }
 
-  if (mode === "signup") {
-    setMessage("Account created. If Supabase asks for email confirmation, confirm it and sign in.", "ok");
-  } else {
-    setMessage("Signed in.", "ok");
+  const credentials = validateAuthFields();
+  if (!credentials) return;
+
+  const { email, password } = credentials;
+  setMessage(mode === "signup" ? "Creating account..." : "Signing in...");
+  signInButton.disabled = true;
+  signUpButton.disabled = true;
+
+  try {
+    const { data, error } = mode === "signup"
+      ? await supabase.auth.signUp({ email, password })
+      : await supabase.auth.signInWithPassword({ email, password });
+
+    if (error) throw error;
+
+    if (mode === "signup") {
+      setMessage("Account created. If Supabase asks for email confirmation, confirm it and sign in.", "ok");
+    } else if (data.session) {
+      setMessage("Signed in. Loading links...", "ok");
+      await applySession(data.session);
+    } else {
+      setMessage("Sign in accepted, but no session was returned. Check Supabase auth settings.", "error");
+    }
+  } catch (error) {
+    setMessage(`Sign in failed: ${error.message}`, "error");
+  } finally {
+    signInButton.disabled = false;
+    signUpButton.disabled = false;
   }
 }
 
@@ -564,7 +602,11 @@ cards.addEventListener("change", (event) => {
   updateLink(select.dataset.id, { status: select.value });
 });
 
-authForm.addEventListener("submit", handleAuth);
+authForm.addEventListener("submit", (event) => {
+  event.preventDefault();
+  handleAuth("signin");
+});
+signUpButton.addEventListener("click", () => handleAuth("signup"));
 signOutButton.addEventListener("click", () => supabase.auth.signOut());
 addForm.addEventListener("submit", addLink);
 exportButton.addEventListener("click", exportJson);
