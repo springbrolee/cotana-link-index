@@ -218,6 +218,28 @@ h1 {
   color: var(--danger);
 }
 
+.app-message {
+  margin: 0 0 18px;
+  padding: 12px 14px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--panel);
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.app-message[data-kind="ok"] {
+  border-color: #b8e3cc;
+  background: var(--ok-soft);
+  color: var(--ok);
+}
+
+.app-message[data-kind="error"] {
+  border-color: #ffc7c2;
+  background: var(--danger-soft);
+  color: var(--danger);
+}
+
 .grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));

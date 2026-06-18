@@ -12,6 +12,7 @@ let currentUser = null;
 const authPanel = document.querySelector("#authPanel");
 const authForm = document.querySelector("#authForm");
 const authMessage = document.querySelector("#authMessage");
+const appMessage = document.querySelector("#appMessage");
 const emailInput = document.querySelector("#emailInput");
 const passwordInput = document.querySelector("#passwordInput");
 const signInButton = document.querySelector("#signInButton");
@@ -42,6 +43,9 @@ const collator = new Intl.Collator("ko-KR", { numeric: true, sensitivity: "base"
 function setMessage(message, kind = "") {
   authMessage.textContent = message;
   authMessage.dataset.kind = kind;
+  appMessage.textContent = message;
+  appMessage.dataset.kind = kind;
+  appMessage.hidden = !message || (!currentUser && kind !== "error");
 }
 
 async function initialize() {
