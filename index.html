@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Cotana Link Index</title>
+    <link rel="stylesheet" href="./styles.css">
+  </head>
+  <body>
+    <main class="app">
+      <section class="topbar" aria-label="Link index overview">
+        <div>
+          <p class="eyebrow">Cotana archive</p>
+          <h1>Link Index</h1>
+        </div>
+        <div class="stats" aria-label="Saved link stats">
+          <div class="stat">
+            <strong id="totalCount">0</strong>
+            <span>links</span>
+          </div>
+          <div class="stat">
+            <strong id="domainCount">0</strong>
+            <span>domains</span>
+          </div>
+        </div>
+      </section>
+
+      <section class="toolbar" aria-label="Filters">
+        <input id="searchInput" class="field" type="search" placeholder="Search title, summary, domain, tag">
+        <select id="tagFilter" class="select" aria-label="Tag filter">
+          <option value="all">All tags</option>
+        </select>
+        <select id="statusFilter" class="select" aria-label="Status filter">
+          <option value="all">All status</option>
+          <option value="읽기 전">읽기 전</option>
+          <option value="완료">완료</option>
+          <option value="보관">보관</option>
+        </select>
+        <select id="sortSelect" class="select" aria-label="Sort links">
+          <option value="newest">Newest</option>
+          <option value="oldest">Oldest</option>
+          <option value="domain">Domain</option>
+        </select>
+      </section>
+
+      <section class="manager" aria-label="Manage links">
+        <form id="addForm" class="add-form">
+          <input id="urlInput" class="field" type="url" placeholder="https://example.com" required>
+          <input id="titleInput" class="field" type="text" placeholder="Title">
+          <input id="tagsInput" class="field" type="text" placeholder="Tags: AI, DB, 읽을거리">
+          <textarea id="summaryInput" class="field textarea" placeholder="Summary or reading notes. Longer text appears in the detail panel."></textarea>
+          <div class="manager-actions">
+            <button class="button primary" type="submit">Add card</button>
+            <button id="exportButton" class="button" type="button">Export JSON</button>
+            <button id="resetButton" class="button danger" type="button">Reset local edits</button>
+          </div>
+        </form>
+      </section>
+
+      <section id="cards" class="grid" aria-live="polite"></section>
+      <section id="emptyState" class="empty">No links match the current filters.</section>
+
+      <aside id="detailPanel" class="detail-panel" aria-hidden="true">
+        <div class="detail-backdrop" data-detail-close></div>
+        <section class="detail-sheet" role="dialog" aria-modal="true" aria-labelledby="detailTitle">
+          <button id="detailClose" class="detail-close" type="button" aria-label="Close summary">Close</button>
+          <div id="detailContent"></div>
+        </section>
+      </aside>
+    </main>
+
+    <script src="./links-data.js"></script>
+    <script src="./app.js"></script>
+  </body>
+</html>

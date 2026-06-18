@@ -1,0 +1,39 @@
+window.LINK_INDEX_DATA = [
+  {
+    "id": "aHR0cHM6Ly9zaGFy",
+    "url": "https://news.hada.io/topic?id=30562",
+    "sourceUrl": "https://share.google/KLDtuDKEOo1YqhZAg",
+    "title": "Claude Code의 수석 디자이너가 AI로 빌드하는 방법 [유튜브] | GeekNews",
+    "domain": "news.hada.io",
+    "summary": "실제 제품 개발에서 클로드 코드를 어떻게 쓰는지, Excalidraw에 autocomplete 기능을 직접 추가하며 실전 워크플로우를 시연 디자이너의 발표지만 내용은 거의 개발자 워크플로우에 가까우며, worktree로 여러 Claude 세션을 병렬 실행하고, 기능 프로토타입을 만들고…",
+    "detail": "- 실제 제품 개발에서 클로드 코드를 어떻게 쓰는지, Excalidraw에 autocomplete 기능을 직접 추가하며 **실전 워크플로우**를 시연\n- 디자이너의 발표지만 내용은 거의 개발자 워크플로우에 가까우며, **worktree로 여러 Claude 세션을 병렬 실행**하고, 기능 프로토타입을 만들고, 브라우저에서 검증하고, PR까지 올리는 과정을 CLI 중심으로 다룸\n- 핵심은 AI를 단순히 코드를 대신 쓰는 도구로 쓰는 것이 아니라, **아이디어 탐색 → 구현안 비교 → 셀프 검증 → PR 작성 → 리뷰 반영 → 머지 보조**까지 이어지는 제품 개발 파이프라인에 넣는 방식임\n- 디자이너에게 유용한 지점은 Claude가 아직 디자인 판단을 잘하지 못한다는 한계를 인정하면서도, 여러 구현안을 빠르게 만들고 스크린샷·GIF가 포함된 PR로 검토하게 만들어 **디자인 의사결정의 속도와 품질 관리**를 함께 높이는 방법을 보여준다는 점\n- 개발자에게 유용한 지점은 `/prototype`, `loop`, 자동 권한 모드, Chrome 기반 셀프 테스트, 코드 정리·리뷰·PR 머지 자동화처럼 Claude Code를 실제 저장소와 협업 흐름 안에 연결하는 구체적인 패턴을 볼 수 있다는 점\n- 특히 “모두가 만들 수 있다고 해서 모든 것이 배포되어야 하는 것은 아니다”라는 관점이 중요하며, AI 시대에는 더 많은 사람이 코드를 만들 수 있게 되는 만큼 **검증, 리뷰, 디자인 관여, 배포 기준**을 자동화된 시스템으로 확장해야 함\n- 결국 이 영상은 디자이너가 AI로 코딩하는 법보다, 디자이너와 개발자가 AI를 사이에 두고 **제품 품질을 유지하면서 더 빠르게 실험하는 방식**을 보여주는 사례\n\n---\n\n### 발표 맥락과 발표자\n\n- Claude Code의 리드 디자이너인 Meaghan Choi\n- AI 도입 이전부터 **CLI 제품을 설계**해 왔으며, Claude CLI 설계에 참여했고 스스로 \"CLI 신봉자(CLI die-hard)\"라 표현\n- Anthropic 구성원은 도구에 상시 접근하며 종일 사용하기에, **더 최적의 작업 방식**을 끊임없이 찾는 분위기라고 언급\n- 데스크톱 앱이 더 접근성이 높고, 데모의 모든 작업은 **desktop app에서도 동일하게 가능**하다고 명시\n  - CLI는 발표자 개인 취향이며 시청자가 반드시 따라야 하는 방식은 아님\n\n### 병렬·고속 작업 환경 설정\n- ## worktree\n  - 로컬 저장소에서 여러 Claude를 동시에 돌리면 서로 작업을 덮어쓰며 **충돌**이 발생할 수 있음\n  - **worktree**는 저장소의 격리된 복사본을 만들어 여러 작업을 병렬로 수행하게 함\n    - 엔지니어들이 Claude를 4~5개 열어 두는 경우, 저장소를 repo1·repo2처럼 복제했거나 worktree를 쓰는 것\n    - `claude --worktree` 실행 시 자동으로 새 브랜치를 체크아웃, 관리가 더 쉬워 추천\n- ## Opus 1M · fast mode\n  - 발표자는 항상 **Opus 100만 컨텍스트**와 **fast mode**를 사용, 단 조직에 따라 접근이 제한될 수 있음\n  - 15분 데모를 빠르게 진행하기 위한 설정으로, 약간의 속도 차이가 있다고 설명\n- ## auto mode\n  - Anthropic 구성원은 항상 **auto mode** 사용, 낮은 권한 모드에 대한 대안\n  - **분류기(classifier)** 가 위험한 동작 여부를 감지하므로, \"Yes, accept\"를 반복 승인할 필요 없이 작업이 훨씬 빨라짐\n- ## Loop\n  - **Loop**는 \"다 끝날 때까지 계속\"을 의미하는 표준 프롬프트로, 완료될 때까지 작업을 반복하게 함\n\n### 프롬프트와 prototype skill\n- 디자인 스펙 없이 \"autocomplete를 추가하고 싶다\"는 **단순 프롬프트**만으로 Excalidraw에 기능 추가를 지시\n- ## prototype skill\n  - Claude에게 요청해 직접 만든 **slash prototype skill**, 한 기능에 대해 기본 5개(n개) 구현안을 생성하고 HTML 파일로 미리보기 후 반복\n    - 스킬은 손으로 작성하지 않고 프롬프트로 만든다고 강조, \"요즘 스킬을 손으로 쓰는 사람은 없다\"고 표현\n  - Claude가 먼저 **하나의 안을 직접 고르고 이유를 설명**하도록 요청, 발표자는 결과를 보는 재미가 있다고 언급\n  - \"온라인 리서치 허용\"을 추가, 프로덕션 코드베이스라면 **Slack·Google Docs·논의 기록·BigQuery** 등 모든 소스를 참고하게 지시했을 것\n  - 최선안 구현·검증·스타일 일치 후 **스크린샷이 포함된 PR** 생성 지시\n    - 이후 트랜스크립트가 아니라, 구현 기능의 녹화가 담긴 **PR을 검토**하는 방식으로 전환\n  - 데모에서 Claude가 제시한 여러 탭 완성(autocomplete) 안 중 청중 의견을 반영해 2번 선택\n\n### 작업의 3가지 원칙\n- **Claude를 포함한 대부분의 LLM은 아직 디자인에 약함**, 따라서 craft와 의사결정에는 사람이 계속 개입해야 함\n  - 영구적인 한계는 아니지만, 현재 워크플로우는 \"사람이 제품에 들어갈 것을 결정\"한다는 전제 위에 구성\n- 코딩은 자동화하되 **비코딩 업무도 Claude에 위임**해야 하며, 그렇지 않으면 가장 자동화된 방식으로 쓰는 것이 아님\n- **누구나 ship할 수 있다고 모든 것을 ship해야 하는 것은 아님**, 모두가 프로덕션에 푸시할 수 있게 된 만큼 확장 가능한 시스템이 필요\n\n### 비코딩 업무 자동화\n- ## Claude in the web (cloud)\n  - 앱에서 발견한 **수백 개의 작은 polish 수정**을 별도 세션 없이 상시 처리하는 용도\n  - 수정이 너무 많다는 엔지니어 불만이 있을 땐 **하나의 PR로 squash** 요청\n    - 사소한 CSS 변경은 검토 없이 자동 승인되기도 함, 제품의 완성도 유지에 유용\n- ## PR 머지 자동화\n  - 거의 모든 구성원이 Claude를 상시 실행해 **PR 머지**를 돕게 함, 발표자는 더 이상 CI나 머지 직전 단계에 직접 관여하지 않음\n  - `simplify`·`code review`는 저장소 내부용으로 **코드베이스를 정리(prune)**, AI를 쓰는 엔지니어링 팀이라면 유사 도구가 있을 것\n  - `commit push PR`은 내부 검사를 일괄 실행하는 명령\n  - 열려 있는 PR을 검토...",
+    "image": "https://social.news.hada.io/topic/30562",
+    "tags": [
+      "AI",
+      "디자인",
+      "개발",
+      "YouTube",
+      "GeekNews"
+    ],
+    "status": "읽기 전",
+    "savedAt": "2026-06-18T05:32:00.023Z",
+    "updatedAt": "2026-06-18T05:51:34.880Z"
+  },
+  {
+    "id": "aHR0cHM6Ly93d3cu",
+    "url": "https://www.postgresql.org/",
+    "sourceUrl": "",
+    "title": "PostgreSQL",
+    "domain": "postgresql.org",
+    "summary": "The world's most advanced open source database.",
+    "detail": "PostgreSQL: The world's most advanced open source database Home About Download Documentation Community Developers Support Donate Your account June 4, 2026: PostgreSQL 19 Beta 1 Released! PostgreSQL: The World's Most Advanced Open Source Relational Database Download New to PostgreSQL? New to PostgreSQL? PostgreSQL is a powerful, open source object-relational database system with over 35 years of active development that has earned it a strong reputation for reliability, feature robustness, and performance. There is a wealth of information to be found describing how to install and use PostgreSQL through the official documentation . The open source community provides many helpful places to become familiar with PostgreSQL, discover how it works, and find career opportunities. Learn more on how to engage with the community . Learn More Feature Matrix Governance Latest Releases 2026-06-04 - PostgreSQL 19 Beta 1 Released! The PostgreSQL Global Development Group announces that the first beta release of PostgreSQL 19 is now available for download . This release contains PostgreSQL 19 feature previews ahead of general availability, though some details of the release can change during the beta period. You can find information about all of the PostgreSQL 19 features and changes in the release notes . In the spirit of the open source PostgreSQL community, we strongly encourage you to test the new features of PostgreSQL 19 on your systems to help us eliminate bugs and other issues. While we do not advise you to run beta versions in production environments, we encourage you to find ways to run your typical application workloads against this beta release. Your testing and feedback help the community ensure that PostgreSQL 19 upholds our standards of delivering a stable, reliable release of the world's most advanced open source relational database. Please read more about our beta testing process and how you can contribute. PostgreSQL 14 will stop receiving fixes on November 12, 2026. If you are running PostgreSQL 14 in a production environment, we suggest that you make plans to upgrade to a newer, supported version of PostgreSQL. Please see our versioning policy for more information. 18.4 &middot; 2026-05-14 &middot; Notes 17.10 &middot; 2026-05-14 &middot; Notes 16.14 &middot; 2026-05-14 &middot; Notes 15.18 &middot; 2026-05-14 &middot; Notes 14.23 &middot; 2026-05-14 &middot; Notes Download Why Upgrade? Security Upcoming Events 2026-06-16 &ndash; 2026-06-18 &middot; POSETTE: An Event for Postgres 2026 2026-06-25 &ndash; 2026-06-26 &middot; Swiss PGDay 2026 2026-08-20 &ndash; 2026-08-21 &middot; Hyderabad Postgres Days 2026 2026-09-08 &middot; PGDay UK 2026 2026-10-20 &ndash; 2026-10-23 &middot; PGConf.EU 2026 2026-10-25 &middot; PGDay Israel 2026 2026-10-30 &middot; PG Down Under 2026 indicates that an event is recognised under the community event guidelines and is directly helping the PostgreSQL community. Check Schedule Add Your Event Mailing Lists The PostgreSQL mailing lists enable you to interact with active community participants on subjects related to the development of PostgreSQL, discovering how to use PostgreSQL, or learning about upcoming events ...",
+    "image": "https://www.postgresql.org/media/img/about/press/elephant.png",
+    "tags": [
+      "DB",
+      "PostgreSQL"
+    ],
+    "status": "읽기 전",
+    "savedAt": "2026-06-18T05:28:04.836Z",
+    "updatedAt": "2026-06-18T05:52:12.500Z"
+  }
+];
