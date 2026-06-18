@@ -1,7 +1,20 @@
-const STORAGE_KEY = "cotana.linkIndex.links.v1";
-const seedLinks = Array.isArray(window.LINK_INDEX_DATA) ? window.LINK_INDEX_DATA : [];
-let links = loadLinks();
+const SUPABASE_URL = "https://vzttlkatauvijjeqdldk.supabase.co";
+const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZ6dHRsa2F0YXV2aWpqZXFkbGRrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE3NjA1MzEsImV4cCI6MjA5NzMzNjUzMX0.6ycVzDnpRREPi8Zg_J4IeGE0Exo-F2W0GV4N97wINxY";
 
+const seedLinks = Array.isArray(window.LINK_INDEX_DATA) ? window.LINK_INDEX_DATA : [];
+const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+let links = [];
+let activeDetailId = "";
+let currentUser = null;
+
+const authPanel = document.querySelector("#authPanel");
+const authForm = document.querySelector("#authForm");
+const authMessage = document.querySelector("#authMessage");
+const emailInput = document.querySelector("#emailInput");
+const passwordInput = document.querySelector("#passwordInput");
+const signOutButton = document.querySelector("#signOutButton");
+const workspace = document.querySelector("#workspace");
 const cards = document.querySelector("#cards");
 const emptyState = document.querySelector("#emptyState");
 const searchInput = document.querySelector("#searchInput");
@@ -20,34 +33,88 @@ const resetButton = document.querySelector("#resetButton");
 const detailPanel = document.querySelector("#detailPanel");
 const detailContent = document.querySelector("#detailContent");
 const detailClose = document.querySelector("#detailClose");
-let activeDetailId = "";
 
 const collator = new Intl.Collator("ko-KR", { numeric: true, sensitivity: "base" });
 
-function loadLinks() {
-  try {
-    const stored = localStorage.getItem(STORAGE_KEY);
-    if (stored) return mergeSeedData(JSON.parse(stored));
-  } catch {
-    localStorage.removeItem(STORAGE_KEY);
-  }
-  return seedLinks.map((link) => ({ ...link }));
+function setMessage(message, kind = "") {
+  authMessage.textContent = message;
+  authMessage.dataset.kind = kind;
 }
 
-function mergeSeedData(items) {
-  return items.map((item) => {
-    const seed = seedLinks.find((link) => link.id === item.id || link.url === item.url);
-    if (!seed) return item;
-    return {
-      ...seed,
-      ...item,
-      detail: item.detail || seed.detail || item.summary || seed.summary || "",
-    };
+async function initialize() {
+  const { data } = await supabase.auth.getSession();
+  await applySession(data.session);
+  supabase.auth.onAuthStateChange((_event, session) => {
+    applySession(session);
   });
 }
 
-function persist() {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(links));
+async function applySession(session) {
+  currentUser = session?.user || null;
+  authPanel.hidden = Boolean(currentUser);
+  workspace.hidden = !currentUser;
+  signOutButton.hidden = !currentUser;
+
+  if (!currentUser) {
+    links = [];
+    closeDetail();
+    render();
+    setMessage("Sign in to sync links with Supabase.");
+    return;
+  }
+
+  setMessage(`Signed in as ${currentUser.email || "user"}.`, "ok");
+  await loadLinks();
+}
+
+async function loadLinks() {
+  const { data, error } = await supabase
+    .from("links")
+    .select("id,title,url,summary,tags,status,created_at,updated_at,user_id")
+    .order("created_at", { ascending: false });
+
+  if (error) {
+    setMessage(`Supabase load failed: ${error.message}`, "error");
+    links = [];
+  } else {
+    links = (data || []).map(fromRow);
+  }
+  render();
+}
+
+function fromRow(row) {
+  return {
+    id: row.id,
+    url: row.url,
+    sourceUrl: "",
+    title: row.title,
+    domain: getDomain(row.url),
+    summary: row.summary || "",
+    detail: row.summary || "",
+    image: "",
+    tags: row.tags || [],
+    status: row.status || "읽기 전",
+    savedAt: row.created_at,
+    updatedAt: row.updated_at,
+  };
+}
+
+function toInsertPayload(item) {
+  return {
+    title: item.title,
+    url: item.url,
+    summary: item.summary || "",
+    tags: item.tags || [],
+    status: item.status || "읽기 전",
+    user_id: currentUser.id,
+  };
+}
+
+function toUpdatePayload(patch) {
+  return {
+    ...patch,
+    updated_at: new Date().toISOString(),
+  };
 }
 
 function normalize(value) {
@@ -61,6 +128,14 @@ function formatDate(value) {
     month: "short",
     day: "numeric",
   }).format(new Date(value));
+}
+
+function getDomain(url) {
+  try {
+    return new URL(url).hostname.replace(/^www\./, "");
+  } catch {
+    return "unknown";
+  }
 }
 
 function fallbackInitial(domain) {
@@ -91,7 +166,6 @@ function cardTemplate(link) {
   const thumb = link.image
     ? `<img src="${escapeAttr(link.image)}" alt="">`
     : `<div class="thumb-fallback">${escapeHtml(fallbackInitial(link.domain))}</div>`;
-  const opened = link.openedAt ? `Opened ${escapeHtml(formatDate(link.openedAt))}` : "Not opened";
 
   return `
     <article class="card js-card" data-id="${escapeAttr(link.id)}" data-domain="${escapeAttr(link.domain)}" tabindex="0" aria-label="Open summary for ${escapeAttr(link.title || link.url)}">
@@ -115,7 +189,7 @@ function cardTemplate(link) {
         </div>
         <div class="card-foot">
           <span>${escapeHtml(formatDate(link.savedAt))}</span>
-          <span>${opened}</span>
+          <span>${escapeHtml(formatDate(link.updatedAt))}</span>
         </div>
       </div>
     </article>
@@ -180,39 +254,50 @@ function render() {
   renderTagOptions();
   const visible = filteredLinks();
   cards.innerHTML = visible.map(cardTemplate).join("");
-  emptyState.classList.toggle("visible", visible.length === 0);
+  emptyState.classList.toggle("visible", Boolean(currentUser) && visible.length === 0);
   totalCount.textContent = String(links.length);
   domainCount.textContent = String(new Set(links.map((link) => link.domain)).size);
   if (activeDetailId) renderDetail();
 }
 
-function markOpened(id) {
-  updateLink(id, {
-    status: "완료",
-    openedAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-  });
-}
+async function updateLink(id, patch) {
+  const { error } = await supabase
+    .from("links")
+    .update(toUpdatePayload(patch))
+    .eq("id", id);
 
-function updateLink(id, patch) {
-  links = links.map((link) => (link.id === id ? { ...link, ...patch } : link));
-  persist();
+  if (error) {
+    setMessage(`Update failed: ${error.message}`, "error");
+    await loadLinks();
+    return;
+  }
+  links = links.map((link) => (link.id === id ? { ...link, ...patch, updatedAt: new Date().toISOString() } : link));
   render();
 }
 
-function deleteLink(id) {
+async function markOpened(id) {
+  await updateLink(id, { status: "완료" });
+}
+
+async function deleteLink(id) {
   const link = links.find((item) => item.id === id);
   if (!link) return false;
   const ok = window.confirm(`Delete this card?\n\n${link.title || link.url}`);
   if (!ok) return false;
+
+  const { error } = await supabase.from("links").delete().eq("id", id);
+  if (error) {
+    setMessage(`Delete failed: ${error.message}`, "error");
+    return false;
+  }
+
   links = links.filter((item) => item.id !== id);
-  persist();
   if (activeDetailId === id) closeDetail();
   render();
   return true;
 }
 
-function addLink(event) {
+async function addLink(event) {
   event.preventDefault();
   let parsed;
   try {
@@ -223,37 +308,35 @@ function addLink(event) {
   }
 
   const url = parsed.toString();
-  const now = new Date().toISOString();
-  const existing = links.find((link) => link.url === url);
   const summary = summaryInput.value.trim();
-  const item = {
-    id: existing?.id || createId(url),
-    url,
-    sourceUrl: "",
+  const existing = links.find((link) => link.url === url);
+  const payload = {
     title: titleInput.value.trim() || url,
-    domain: parsed.hostname.replace(/^www\./, ""),
-    summary: clipText(summary, 260),
-    detail: summary,
-    image: "",
+    url,
+    summary: clipText(summary, 1200),
     tags: parseTags(tagsInput.value),
     status: existing?.status || "읽기 전",
-    savedAt: existing?.savedAt || now,
-    updatedAt: now,
   };
 
-  links = existing ? links.map((link) => (link.id === existing.id ? item : link)) : [item, ...links];
-  persist();
+  const request = existing
+    ? supabase.from("links").update(toUpdatePayload(payload)).eq("id", existing.id).select().single()
+    : supabase.from("links").insert(toInsertPayload(payload)).select().single();
+
+  const { data, error } = await request;
+  if (error) {
+    setMessage(`Save failed: ${error.message}`, "error");
+    return;
+  }
+
+  const next = fromRow(data);
+  links = existing ? links.map((link) => (link.id === existing.id ? next : link)) : [next, ...links];
   addForm.reset();
+  setMessage(existing ? "Card updated in Supabase." : "Card added to Supabase.", "ok");
   render();
 }
 
 function parseTags(value) {
   return [...new Set(String(value || "읽을거리").split(",").map((tag) => tag.trim()).filter(Boolean))];
-}
-
-function createId(value) {
-  const encoded = btoa(unescape(encodeURIComponent(value))).replace(/[^a-z0-9]/gi, "");
-  return encoded.slice(0, 16) || String(Date.now());
 }
 
 function clipText(value, length) {
@@ -271,13 +354,34 @@ function exportJson() {
   URL.revokeObjectURL(url);
 }
 
-function resetLocalEdits() {
-  const ok = window.confirm("Reset local edits and reload the original links-data.js cards?");
+async function importStarterData() {
+  if (!seedLinks.length) return;
+  const ok = window.confirm(`Import ${seedLinks.length} starter cards into your Supabase account?`);
   if (!ok) return;
-  localStorage.removeItem(STORAGE_KEY);
-  links = seedLinks.map((link) => ({ ...link }));
-  closeDetail();
-  render();
+
+  const existingUrls = new Set(links.map((link) => link.url));
+  const payload = seedLinks
+    .filter((link) => !existingUrls.has(link.url))
+    .map((link) => toInsertPayload({
+      title: link.title || link.url,
+      url: link.url,
+      summary: clipText(link.summary || link.detail || "", 1200),
+      tags: link.tags || ["읽을거리"],
+      status: link.status || "읽기 전",
+    }));
+
+  if (!payload.length) {
+    setMessage("Starter data is already imported.", "ok");
+    return;
+  }
+
+  const { error } = await supabase.from("links").insert(payload);
+  if (error) {
+    setMessage(`Import failed: ${error.message}`, "error");
+    return;
+  }
+  setMessage("Starter data imported.", "ok");
+  await loadLinks();
 }
 
 function showDetail(id) {
@@ -304,8 +408,6 @@ function renderDetail() {
   }
 
   const tags = (link.tags || []).map((tag) => `<span class="tag">${escapeHtml(tag)}</span>`).join("");
-  const source = link.sourceUrl && link.sourceUrl !== link.url ? link.sourceUrl : "";
-  const opened = link.openedAt ? formatDate(link.openedAt) : "아직 열람 전";
   const saved = link.savedAt ? formatDate(link.savedAt) : "";
   const updated = link.updatedAt ? formatDate(link.updatedAt) : "";
   const detail = link.detail || link.summary || "No summary captured yet.";
@@ -332,10 +434,6 @@ function renderDetail() {
         <dd>${escapeHtml(saved || "-")}</dd>
       </div>
       <div>
-        <dt>Opened</dt>
-        <dd>${escapeHtml(opened)}</dd>
-      </div>
-      <div>
         <dt>Updated</dt>
         <dd>${escapeHtml(updated || "-")}</dd>
       </div>
@@ -343,11 +441,6 @@ function renderDetail() {
         <dt>URL</dt>
         <dd class="detail-url">${escapeHtml(link.url)}</dd>
       </div>
-      ${source ? `
-      <div>
-        <dt>Original share</dt>
-        <dd class="detail-url">${escapeHtml(source)}</dd>
-      </div>` : ""}
     </dl>
 
     <div class="detail-actions">
@@ -418,6 +511,30 @@ function formatInline(value) {
     .replace(/`([^`]+)`/g, "<code>$1</code>");
 }
 
+async function handleAuth(event) {
+  event.preventDefault();
+  const submitter = event.submitter;
+  const mode = submitter?.dataset.authMode || "signin";
+  const email = emailInput.value.trim();
+  const password = passwordInput.value;
+  setMessage(mode === "signup" ? "Creating account..." : "Signing in...");
+
+  const { error } = mode === "signup"
+    ? await supabase.auth.signUp({ email, password })
+    : await supabase.auth.signInWithPassword({ email, password });
+
+  if (error) {
+    setMessage(error.message, "error");
+    return;
+  }
+
+  if (mode === "signup") {
+    setMessage("Account created. If Supabase asks for email confirmation, confirm it and sign in.", "ok");
+  } else {
+    setMessage("Signed in.", "ok");
+  }
+}
+
 cards.addEventListener("click", (event) => {
   const open = event.target.closest(".js-open");
   const remove = event.target.closest(".js-delete");
@@ -444,15 +561,14 @@ cards.addEventListener("keydown", (event) => {
 cards.addEventListener("change", (event) => {
   const select = event.target.closest(".js-status");
   if (!select) return;
-  updateLink(select.dataset.id, {
-    status: select.value,
-    updatedAt: new Date().toISOString(),
-  });
+  updateLink(select.dataset.id, { status: select.value });
 });
 
+authForm.addEventListener("submit", handleAuth);
+signOutButton.addEventListener("click", () => supabase.auth.signOut());
 addForm.addEventListener("submit", addLink);
 exportButton.addEventListener("click", exportJson);
-resetButton.addEventListener("click", resetLocalEdits);
+resetButton.addEventListener("click", importStarterData);
 searchInput.addEventListener("input", render);
 tagFilter.addEventListener("change", render);
 statusFilter.addEventListener("change", render);
@@ -474,14 +590,11 @@ detailPanel.addEventListener("click", (event) => {
 detailPanel.addEventListener("change", (event) => {
   const select = event.target.closest(".js-detail-status");
   if (!select) return;
-  updateLink(select.dataset.id, {
-    status: select.value,
-    updatedAt: new Date().toISOString(),
-  });
+  updateLink(select.dataset.id, { status: select.value });
 });
 detailClose.addEventListener("click", closeDetail);
 document.addEventListener("keydown", (event) => {
   if (event.key === "Escape" && activeDetailId) closeDetail();
 });
 
-render();
+initialize();

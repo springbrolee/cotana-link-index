@@ -13,18 +13,34 @@
           <p class="eyebrow">Cotana archive</p>
           <h1>Link Index</h1>
         </div>
-        <div class="stats" aria-label="Saved link stats">
-          <div class="stat">
-            <strong id="totalCount">0</strong>
-            <span>links</span>
+        <div class="topbar-side">
+          <div class="stats" aria-label="Saved link stats">
+            <div class="stat">
+              <strong id="totalCount">0</strong>
+              <span>links</span>
+            </div>
+            <div class="stat">
+              <strong id="domainCount">0</strong>
+              <span>domains</span>
+            </div>
           </div>
-          <div class="stat">
-            <strong id="domainCount">0</strong>
-            <span>domains</span>
-          </div>
+          <button id="signOutButton" class="button compact" type="button" hidden>Sign out</button>
         </div>
       </section>
 
+      <section id="authPanel" class="auth-panel" aria-label="Sign in">
+        <form id="authForm" class="auth-form">
+          <input id="emailInput" class="field" type="email" placeholder="Email" autocomplete="email" required>
+          <input id="passwordInput" class="field" type="password" placeholder="Password" autocomplete="current-password" required>
+          <div class="auth-actions">
+            <button class="button primary" type="submit" data-auth-mode="signin">Sign in</button>
+            <button class="button" type="submit" data-auth-mode="signup">Create account</button>
+          </div>
+        </form>
+        <p id="authMessage" class="auth-message">Sign in to sync links with Supabase.</p>
+      </section>
+
+      <section id="workspace" class="workspace" hidden>
       <section class="toolbar" aria-label="Filters">
         <input id="searchInput" class="field" type="search" placeholder="Search title, summary, domain, tag">
         <select id="tagFilter" class="select" aria-label="Tag filter">
@@ -52,13 +68,14 @@
           <div class="manager-actions">
             <button class="button primary" type="submit">Add card</button>
             <button id="exportButton" class="button" type="button">Export JSON</button>
-            <button id="resetButton" class="button danger" type="button">Reset local edits</button>
+            <button id="resetButton" class="button" type="button">Import starter data</button>
           </div>
         </form>
       </section>
 
       <section id="cards" class="grid" aria-live="polite"></section>
       <section id="emptyState" class="empty">No links match the current filters.</section>
+      </section>
 
       <aside id="detailPanel" class="detail-panel" aria-hidden="true">
         <div class="detail-backdrop" data-detail-close></div>
@@ -70,6 +87,7 @@
     </main>
 
     <script src="./links-data.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="./app.js"></script>
   </body>
 </html>

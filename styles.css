@@ -47,6 +47,12 @@ textarea {
   padding-bottom: 18px;
 }
 
+.topbar-side {
+  display: grid;
+  gap: 8px;
+  justify-items: end;
+}
+
 .eyebrow {
   margin: 0 0 6px;
   color: var(--muted);
@@ -155,6 +161,12 @@ h1 {
   padding: 0 13px;
 }
 
+.button.compact {
+  min-height: 34px;
+  padding: 0 10px;
+  font-size: 13px;
+}
+
 .button.primary {
   border-color: var(--accent);
   background: var(--accent);
@@ -169,6 +181,41 @@ h1 {
 .button.danger:hover,
 .icon-button:hover {
   background: var(--danger-soft);
+}
+
+.auth-panel {
+  margin: 0 0 18px;
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--panel);
+}
+
+.auth-form {
+  display: grid;
+  grid-template-columns: minmax(180px, 1fr) minmax(180px, 1fr) auto;
+  gap: 10px;
+  align-items: center;
+}
+
+.auth-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.auth-message {
+  margin: 10px 0 0;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.auth-message[data-kind="ok"] {
+  color: var(--ok);
+}
+
+.auth-message[data-kind="error"] {
+  color: var(--danger);
 }
 
 .grid {
@@ -530,8 +577,13 @@ h1 {
 
   .topbar,
   .toolbar,
+  .auth-form,
   .add-form {
     grid-template-columns: 1fr;
+  }
+
+  .topbar-side {
+    justify-items: stretch;
   }
 
   .add-form .textarea,
